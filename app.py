@@ -16,7 +16,7 @@ st.title("🦾 J.A.R.V.I.S")
 st.caption("IA Futurista com Groq - Rápida e poderosa!")
 
 # Pega a chave
-groq_key = os.getenv(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)
+groq_key = os.getenv("GROQ_API_KEY")
 
 if not groq_key:
     st.error("⚠️ Crie um arquivo .env com sua chave do Groq!")
