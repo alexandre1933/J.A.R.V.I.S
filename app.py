@@ -1,98 +1,86 @@
 import streamlit as st
 import os
 from groq import Groq
-from datetime import datetime
 
-st.set_page_config(
-    page_title="J.A.R.V.I.S",
-    page_icon="🤖",
-    layout="centered"
-)
+st.set_page_config(page_title="J.A.R.V.I.S", page_icon="🤖", layout="centered")
 
 st.title("🦾 J.A.R.V.I.S")
-st.caption("IA Futurista com Visão - Agora aceita fotos!")
+st.caption("IA Futurista com Voz em Português")
 
-# Chave do Groq
 groq_key = os.getenv("GROQ_API_KEY")
 
 if not groq_key:
-    st.error("🔑 Chave do Groq não configurada!")
-    st.info("Adicione GROQ_API_KEY nos Secrets do Streamlit (Gerenciar aplicativo → Secrets)")
+    st.error("🔑 Configure a GROQ_API_KEY nos Secrets!")
     st.stop()
 
-# Histórico
 if "historico" not in st.session_state:
     st.session_state.historico = []
 
-# Mostra histórico
 for msg in st.session_state.historico:
     with st.chat_message(msg["role"]):
-        if msg["role"] == "user" and "image" in msg:
-            st.image(msg["image"], width=300)
-            st.write(msg["content"])
-        else:
-            st.markdown(msg["content"])
+        st.markdown(msg["content"])
 
-# Input de texto + foto
-col1, col2 = st.columns([4, 1])
+# Controles
+col1, col2, col3 = st.columns([3, 1, 1])
 with col1:
-    prompt = st.chat_input("Digite sua mensagem...")
+    prompt = st.chat_input("Digite ou fale...")
 
 with col2:
-    uploaded_file = st.file_uploader("📸", type=["png", "jpg", "jpeg"], label_visibility="collapsed")
+    if st.button("🎤 Falar", use_container_width=True):
+        st.info("🔴 Ouvindo...")
 
-if prompt or uploaded_file is not None:
-    # Adiciona mensagem do usuário
-    user_message = {"role": "user", "content": prompt or "Descreva esta imagem"}
-    
-    if uploaded_file is not None:
-        user_message["image"] = uploaded_file
-        st.session_state.historico.append(user_message)
-        with st.chat_message("user"):
-            st.image(uploaded_file, width=300)
-            if prompt:
-                st.write(prompt)
-    else:
-        st.session_state.historico.append(user_message)
-        with st.chat_message("user"):
-            st.write(prompt)
+with col3:
+    if st.button("🔊 Jarvis Falar", use_container_width=True):
+        if st.session_state.historico and st.session_state.historico[-1]["role"] == "assistant":
+            ultima = st.session_state.historico[-1]["content"]
+            st.markdown(f"""
+                <script>
+                    const utterance = new SpeechSynthesisUtterance("{ultima.replace('"', '').replace("'", "")}");
+                    utterance.lang = 'pt-BR';
+                    utterance.pitch = 0.85;     // Tom mais grave (estilo Jarvis)
+                    utterance.rate = 1.05;      // Velocidade elegante
+                    utterance.volume = 0.95;
+                    speechSynthesis.speak(utterance);
+                </script>
+            """, unsafe_allow_html=True)
 
-    # Resposta da IA
+if prompt:
+    st.session_state.historico.append({"role": "user", "content": prompt})
+    with st.chat_message("user"):
+        st.markdown(prompt)
+
     with st.chat_message("assistant"):
-        with st.spinner("J.A.R.V.I.S analisando..."):
+        with st.spinner("J.A.R.V.I.S processando..."):
             try:
                 client = Groq(api_key=groq_key)
                 
                 messages = [
-                    {"role": "system", "content": "Você é J.A.R.V.I.S, IA futurista sarcástica e útil. Responda em português do Brasil."}
-                ]
-
-                # Monta as mensagens com imagem se houver
-                for msg in st.session_state.historico:
-                    if msg["role"] == "user" and "image" in msg:
-                        # Para visão no Groq
-                        messages.append({
-                            "role": "user",
-                            "content": [
-                                {"type": "text", "text": msg.get("content", "Descreva esta imagem")},
-                                {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{msg['image'].getvalue()}"}}  # Simplificado
-                            ]
-                        })
-                    else:
-                        messages.append({"role": msg["role"], "content": msg["content"]})
+                    {"role": "system", "content": "Você é J.A.R.V.I.S, a IA do Tony Stark. Responda sempre em português do Brasil, de forma sarcástica, educada e inteligente."}
+                ] + [{"role": m["role"], "content": m["content"]} for m in st.session_state.historico]
 
                 response = client.chat.completions.create(
-                    model="llama-3.2-11b-vision-preview",   # Modelo com visão
+                    model="llama-3.1-8b-instant",
                     messages=messages,
-                    temperature=0.7,
-                    max_tokens=800
+                    temperature=0.75,
+                    max_tokens=900
                 )
                 
                 resposta = response.choices[0].message.content
                 st.markdown(resposta)
                 
+                # Voz Jarvis em Português
+                st.markdown(f"""
+                    <script>
+                        const speakJarvis = new SpeechSynthesisUtterance(`{resposta.replace('"', '').replace("'", "")}`);
+                        speakJarvis.lang = 'pt-BR';
+                        speakJarvis.pitch = 0.85;
+                        speakJarvis.rate = 1.05;
+                        speechSynthesis.speak(speakJarvis);
+                    </script>
+                """, unsafe_allow_html=True)
+                
             except Exception as e:
-                st.error("Erro ao processar imagem ou limite atingido. Tente novamente.")
-                resposta = "Desculpe, tive dificuldade pra analisar isso agora."
+                st.error("Erro ao conectar...")
+                resposta = "Desculpe senhor, tive um pequeno problema técnico."
 
     st.session_state.historico.append({"role": "assistant", "content": resposta})
