@@ -1,7 +1,10 @@
 import streamlit as st
-import os
-from groq import Groq
 from datetime import datetime
+import os
+from dotenv import load_dotenv
+from groq import Groq
+
+load_dotenv()
 
 st.set_page_config(
     page_title="J.A.R.V.I.S",
@@ -10,79 +13,39 @@ st.set_page_config(
 )
 
 st.title("🦾 J.A.R.V.I.S")
-st.caption("IA Futurista com Visão - Agora aceita fotos!")
+st.caption("IA Futurista com Groq - Rápida e poderosa!")
 
-# Chave do Groq
+# Pega a chave
 groq_key = os.getenv("GROQ_API_KEY")
 
 if not groq_key:
-    st.error("🔑 Chave do Groq não configurada!")
-    st.info("Adicione GROQ_API_KEY nos Secrets do Streamlit (Gerenciar aplicativo → Secrets)")
+    st.error("⚠️ Crie um arquivo .env com sua chave do Groq!")
+    st.info("Vá em https://console.groq.com/keys e crie uma chave gratuita.")
     st.stop()
 
-# Histórico
 if "historico" not in st.session_state:
     st.session_state.historico = []
 
-# Mostra histórico
 for msg in st.session_state.historico:
     with st.chat_message(msg["role"]):
-        if msg["role"] == "user" and "image" in msg:
-            st.image(msg["image"], width=300)
-            st.write(msg["content"])
-        else:
-            st.markdown(msg["content"])
+        st.markdown(msg["content"])
 
-# Input de texto + foto
-col1, col2 = st.columns([4, 1])
-with col1:
-    prompt = st.chat_input("Digite sua mensagem...")
+if prompt := st.chat_input("Digite sua mensagem..."):
+    st.session_state.historico.append({"role": "user", "content": prompt})
+    with st.chat_message("user"):
+        st.markdown(prompt)
 
-with col2:
-    uploaded_file = st.file_uploader("📸", type=["png", "jpg", "jpeg"], label_visibility="collapsed")
-
-if prompt or uploaded_file is not None:
-    # Adiciona mensagem do usuário
-    user_message = {"role": "user", "content": prompt or "Descreva esta imagem"}
-    
-    if uploaded_file is not None:
-        user_message["image"] = uploaded_file
-        st.session_state.historico.append(user_message)
-        with st.chat_message("user"):
-            st.image(uploaded_file, width=300)
-            if prompt:
-                st.write(prompt)
-    else:
-        st.session_state.historico.append(user_message)
-        with st.chat_message("user"):
-            st.write(prompt)
-
-    # Resposta da IA
     with st.chat_message("assistant"):
-        with st.spinner("J.A.R.V.I.S analisando..."):
+        with st.spinner("J.A.R.V.I.S pensando em alta velocidade..."):
             try:
                 client = Groq(api_key=groq_key)
                 
                 messages = [
-                    {"role": "system", "content": "Você é J.A.R.V.I.S, IA futurista sarcástica e útil. Responda em português do Brasil."}
-                ]
-
-                # Monta as mensagens com imagem se houver
-                for msg in st.session_state.historico:
-                    if msg["role"] == "user" and "image" in msg:
-                        # Para visão no Groq
-                        messages.append({
-                            "role": "user",
-                            "content": [
-                                {"type": "text", "text": msg.get("content", "Descreva esta imagem")},
-                                {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{msg['image'].getvalue()}"}}  # Simplificado
-                            ]
-                        })
-                    else:
-                        messages.append({"role": msg["role"], "content": msg["content"]})
+                    {"role": "system", "content": "Você é J.A.R.V.I.S, a IA futurista, sarcástica, leal e extremamente útil do Tony Stark. Responda sempre em português do Brasil, de forma natural, divertida e direta."}
+                ] + [{"role": m["role"], "content": m["content"]} for m in st.session_state.historico]
 
                 response = client.chat.completions.create(
-                    model="llama-3.2-11b-vision-preview",   # Modelo com visão
+                    model="llama-3.1-8b-instant",   # rápido e bom no free tier
                     messages=messages,
                     temperature=0.7,
                     max_tokens=800
@@ -92,7 +55,7 @@ if prompt or uploaded_file is not None:
                 st.markdown(resposta)
                 
             except Exception as e:
-                st.error("Erro ao processar imagem ou limite atingido. Tente novamente.")
-                resposta = "Desculpe, tive dificuldade pra analisar isso agora."
+                st.error("Limite do Groq atingido ou erro temporário. Aguarde uns segundos e tente novamente.")
+                resposta = "Estou com um pouco de carga agora, senhor. Tenta de novo em 10 segundos!"
 
     st.session_state.historico.append({"role": "assistant", "content": resposta})
