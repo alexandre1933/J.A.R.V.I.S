@@ -5,7 +5,7 @@ from groq import Groq
 st.set_page_config(page_title="J.A.R.V.I.S", page_icon="🤖", layout="centered")
 
 st.title("🦾 J.A.R.V.I.S")
-st.caption("IA Futurista com Voz em Português")
+st.caption("IA Futurista com Voz + Visão")
 
 groq_key = os.getenv("GROQ_API_KEY")
 
@@ -16,71 +16,99 @@ if not groq_key:
 if "historico" not in st.session_state:
     st.session_state.historico = []
 
+# Mostra histórico
 for msg in st.session_state.historico:
     with st.chat_message(msg["role"]):
+        if msg.get("image"):
+            st.image(msg["image"], width=300)
         st.markdown(msg["content"])
 
-# Controles
-col1, col2, col3 = st.columns([3, 1, 1])
+# ==================== INPUTS ====================
+col1, col2, col3 = st.columns([4, 1, 1])
+
 with col1:
-    prompt = st.chat_input("Digite ou fale...")
+    prompt = st.chat_input("Digite sua mensagem...")
 
 with col2:
-    if st.button("🎤 Falar", use_container_width=True):
-        st.info("🔴 Ouvindo...")
+    uploaded_file = st.file_uploader("📸 Foto", type=["png", "jpg", "jpeg"], label_visibility="collapsed")
 
 with col3:
-    if st.button("🔊 Jarvis Falar", use_container_width=True):
-        if st.session_state.historico and st.session_state.historico[-1]["role"] == "assistant":
-            ultima = st.session_state.historico[-1]["content"]
-            st.markdown(f"""
-                <script>
-                    const utterance = new SpeechSynthesisUtterance("{ultima.replace('"', '').replace("'", "")}");
-                    utterance.lang = 'pt-BR';
-                    utterance.pitch = 0.85;     // Tom mais grave (estilo Jarvis)
-                    utterance.rate = 1.05;      // Velocidade elegante
-                    utterance.volume = 0.95;
-                    speechSynthesis.speak(utterance);
-                </script>
-            """, unsafe_allow_html=True)
+    if st.button("🎤 Falar", use_container_width=True):
+        st.info("🔴 Ouvindo... (em breve)")
 
-if prompt:
-    st.session_state.historico.append({"role": "user", "content": prompt})
+# Botão de voz Jarvis
+if st.button("🔊 Jarvis Falar", use_container_width=True):
+    if st.session_state.historico and st.session_state.historico[-1]["role"] == "assistant":
+        ultima = st.session_state.historico[-1]["content"]
+        st.markdown(f"""
+            <script>
+                const u = new SpeechSynthesisUtterance("{ultima.replace('"', '').replace("'", "")}");
+                u.lang = 'pt-BR';
+                u.pitch = 0.85;
+                u.rate = 1.05;
+                speechSynthesis.speak(u);
+            </script>
+        """, unsafe_allow_html=True)
+
+# ==================== PROCESSAR MENSAGEM ====================
+if prompt or uploaded_file is not None:
+    user_content = prompt if prompt else "Descreva esta imagem"
+
+    # Salva mensagem do usuário
+    user_msg = {"role": "user", "content": user_content}
+    if uploaded_file:
+        user_msg["image"] = uploaded_file
+
+    st.session_state.historico.append(user_msg)
+
     with st.chat_message("user"):
-        st.markdown(prompt)
+        if uploaded_file:
+            st.image(uploaded_file, width=300)
+        st.markdown(user_content)
 
+    # Resposta da IA
     with st.chat_message("assistant"):
-        with st.spinner("J.A.R.V.I.S processando..."):
+        with st.spinner("J.A.R.V.I.S analisando..."):
             try:
                 client = Groq(api_key=groq_key)
                 
-                messages = [
-                    {"role": "system", "content": "Você é J.A.R.V.I.S, a IA do Tony Stark. Responda sempre em português do Brasil, de forma sarcástica, educada e inteligente."}
-                ] + [{"role": m["role"], "content": m["content"]} for m in st.session_state.historico]
+                messages = [{"role": "system", "content": "Você é J.A.R.V.I.S, IA do Tony Stark. Responda em português do Brasil, sarcástico e útil."}]
+
+                for m in st.session_state.historico:
+                    if m["role"] == "user" and m.get("image"):
+                        messages.append({
+                            "role": "user",
+                            "content": [
+                                {"type": "text", "text": m["content"]},
+                                {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{m['image'].getvalue()}"}} # Simplificado
+                            ]
+                        })
+                    else:
+                        messages.append({"role": m["role"], "content": m["content"]})
 
                 response = client.chat.completions.create(
-                    model="llama-3.1-8b-instant",
+                    model="llama-3.2-11b-vision-preview",   # Melhor modelo com visão
                     messages=messages,
                     temperature=0.75,
-                    max_tokens=900
+                    max_tokens=800
                 )
                 
                 resposta = response.choices[0].message.content
                 st.markdown(resposta)
-                
-                # Voz Jarvis em Português
+
+                # Voz Jarvis automática
                 st.markdown(f"""
                     <script>
-                        const speakJarvis = new SpeechSynthesisUtterance(`{resposta.replace('"', '').replace("'", "")}`);
-                        speakJarvis.lang = 'pt-BR';
-                        speakJarvis.pitch = 0.85;
-                        speakJarvis.rate = 1.05;
-                        speechSynthesis.speak(speakJarvis);
+                        const speak = new SpeechSynthesisUtterance(`{resposta.replace('"', '').replace("'", "")}`);
+                        speak.lang = 'pt-BR';
+                        speak.pitch = 0.85;
+                        speak.rate = 1.05;
+                        speechSynthesis.speak(speak);
                     </script>
                 """, unsafe_allow_html=True)
-                
+
             except Exception as e:
-                st.error("Erro ao conectar...")
-                resposta = "Desculpe senhor, tive um pequeno problema técnico."
+                st.error("Erro ou limite atingido. Tente novamente.")
+                resposta = "Desculpe senhor, estou com sobrecarga agora."
 
     st.session_state.historico.append({"role": "assistant", "content": resposta})
