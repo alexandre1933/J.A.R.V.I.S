@@ -97,23 +97,23 @@ Você está aqui para ajudar o usuário a construir jogos e sistemas de qualidad
 
                 messages = [{"role": "system", "content": system_prompt}]
                 
-                for m in st.session_state.historico[-16:]:  # Memória um pouco maior
+                for m in st.session_state.historico[-16:]:  # Memória das últimas 16 mensagens
                     if m.get("image"):
                         messages.append({"role": "user", "content": m["content"]})
                     else:
                         messages.append({"role": m["role"], "content": m["content"]})
 
                 response = client.chat.completions.create(
-                    model="llama-3.3-70b-versatile",  # modelo bem mais capaz
+                    model="llama-3.1-8b-instant",
                     messages=messages,
-                    temperature=0.4,          # mais preciso pra código
+                    temperature=0.4,
                     max_tokens=2500
                 )
                 
                 resposta = response.choices[0].message.content
                 st.markdown(resposta)
 
-                # Voz automática (opcional)
+                # Voz automática
                 st.markdown(f"""
                     <script>
                         const speak = new SpeechSynthesisUtterance(`{resposta.replace('"', '').replace("'", "")}`);
