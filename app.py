@@ -2,22 +2,10 @@ import streamlit as st
 import os
 from groq import Groq
 
-st.set_page_config(page_title="J.A.R.V.I.S", page_icon="🤖", layout="centered")
+st.set_page_config(page_title="Dev JARVIS - Programação & Games", page_icon="🤖", layout="centered")
 
-# ==================== ESTILO 3D HOLOGRÁFICO ====================
-st.markdown("""
-<style>
-    .stApp { background: linear-gradient(135deg, #0a001f, #1a0033); color: #00ffcc; }
-    .main { background: rgba(10, 10, 40, 0.9); border: 2px solid #00ffcc; border-radius: 20px; box-shadow: 0 0 40px rgba(0, 255, 204, 0.4); }
-    h1 { text-shadow: 0 0 30px #00ffcc; animation: glow 1.5s infinite alternate; }
-    @keyframes glow { from { text-shadow: 0 0 10px #00ffcc; } to { text-shadow: 0 0 40px #00ffff, 0 0 60px #00ffcc; } }
-    .stChatMessage { background: rgba(0, 255, 204, 0.08) !important; border: 1px solid #00ffcc !important; border-radius: 15px; }
-    .stButton>button { background: #00ffcc; color: black; border-radius: 10px; }
-</style>
-""", unsafe_allow_html=True)
-
-st.title("🦾 J.A.R.V.I.S")
-st.caption("**SISTEMA HOLOGRÁFICO v2.0** - Visão, Voz e Memória Ativados")
+st.title("🤖 Dev JARVIS")
+st.caption("IA especializada em programação, jogos e engines")
 
 groq_key = os.getenv("GROQ_API_KEY")
 
@@ -46,13 +34,13 @@ with col2:
 # Botões extras
 col3, col4 = st.columns(2)
 with col3:
-    if st.button("🔊 Jarvis Falar", use_container_width=True):
+    if st.button("🔊 Falar", use_container_width=True):
         if st.session_state.historico and st.session_state.historico[-1]["role"] == "assistant":
             ultima = st.session_state.historico[-1]["content"]
             st.markdown(f"""
                 <script>
                     const u = new SpeechSynthesisUtterance("{ultima.replace('"', '').replace("'", "")}");
-                    u.lang = 'pt-BR'; u.pitch = 0.85; u.rate = 1.05; speechSynthesis.speak(u);
+                    u.lang = 'pt-BR'; u.pitch = 0.9; u.rate = 1.0; speechSynthesis.speak(u);
                 </script>
             """, unsafe_allow_html=True)
 
@@ -77,39 +65,65 @@ if prompt or uploaded_file is not None:
         st.markdown(user_content)
 
     with st.chat_message("assistant"):
-        with st.spinner("**ANALISANDO INTERFACE HOLOGRÁFICA...**"):
+        with st.spinner("Pensando..."):
             try:
                 client = Groq(api_key=groq_key)
                 
-                messages = [{"role": "system", "content": "Você é J.A.R.V.I.S. Responda em português do Brasil, sarcástico e útil."}]
+                system_prompt = """Você é um assistente de programação extremamente competente e especializado em desenvolvimento de jogos e software.
+
+Suas especialidades principais:
+- Programação geral: Python, C#, C++, JavaScript/TypeScript, Rust, Go, Java, etc.
+- Engines de jogos: Unity (C#), Unreal Engine (C++/Blueprints), Godot (GDScript/C#), GameMaker, custom engines.
+- Arquitetura de jogos: Entity-Component-System (ECS), Scene Graph, Game Loop, State Machines, Event Systems.
+- Sistemas de jogo: física, colisão, pathfinding (A*, NavMesh), AI (Behavior Trees, GOAP, Utility AI), inventário, quest systems, save/load.
+- Performance e otimização: profiling, memory management, multithreading, GPU programming (shaders HLSL/GLSL/Compute), batching, LOD, object pooling.
+- Gráficos e rendering: pipelines modernas, PBR, post-processing, lighting, particles.
+- Networking para multiplayer: client-server, lag compensation, prediction, replication.
+- Ferramentas e pipelines: versionamento (Git), build systems, CI/CD, asset management, debugging avançado.
+- Algoritmos e estruturas de dados relevantes para jogos e software de alta performance.
+- Boas práticas: clean code, design patterns (especialmente os usados em games), SOLID, testes, documentação.
+
+Regras de resposta:
+- Responda sempre em português do Brasil.
+- Seja direto, claro e técnico. Explique o porquê das decisões.
+- Quando for código, use blocos de código bem formatados e comenta o essencial.
+- Se o usuário pedir ajuda com bug, peça o código/erro relevante e analise passo a passo.
+- Se for sobre engine específica, adapte a resposta para as melhores práticas daquela engine.
+- Quando útil, sugira alternativas modernas ou mais performáticas.
+- Não invente APIs ou funções que não existem. Se não souber com certeza, diga.
+- Mantenha o tom profissional, prestativo e objetivo (sem exageros de personalidade).
+
+Você está aqui para ajudar o usuário a construir jogos e sistemas de qualidade, desde protótipos até produção."""
+
+                messages = [{"role": "system", "content": system_prompt}]
                 
-                for m in st.session_state.historico[-12:]:  # Memória limitada
+                for m in st.session_state.historico[-16:]:  # Memória um pouco maior
                     if m.get("image"):
                         messages.append({"role": "user", "content": m["content"]})
                     else:
                         messages.append({"role": m["role"], "content": m["content"]})
 
                 response = client.chat.completions.create(
-                    model="llama-3.1-8b-instant",
+                    model="llama-3.3-70b-versatile",  # modelo bem mais capaz
                     messages=messages,
-                    temperature=0.75,
-                    max_tokens=800
+                    temperature=0.4,          # mais preciso pra código
+                    max_tokens=2500
                 )
                 
                 resposta = response.choices[0].message.content
                 st.markdown(resposta)
 
-                # Voz automática
+                # Voz automática (opcional)
                 st.markdown(f"""
                     <script>
                         const speak = new SpeechSynthesisUtterance(`{resposta.replace('"', '').replace("'", "")}`);
-                        speak.lang = 'pt-BR'; speak.pitch = 0.85; speak.rate = 1.05;
+                        speak.lang = 'pt-BR'; speak.pitch = 0.9; speak.rate = 1.0;
                         speechSynthesis.speak(speak);
                     </script>
                 """, unsafe_allow_html=True)
 
             except Exception as e:
-                st.error("**SOBRECARGA NO NÚCLEO** - Aguarde 15s")
-                resposta = "Sistema temporariamente sobrecarregado, senhor."
+                st.error(f"Erro: {e}")
+                resposta = "Deu ruim no núcleo. Tenta de novo em alguns segundos."
 
     st.session_state.historico.append({"role": "assistant", "content": resposta})
