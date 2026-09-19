@@ -91,20 +91,20 @@ Regras de resposta:
 - Se for sobre engine específica, adapte a resposta para as melhores práticas daquela engine.
 - Quando útil, sugira alternativas modernas ou mais performáticas.
 - Não invente APIs ou funções que não existem. Se não souber com certeza, diga.
-- Mantenha o tom profissional, prestativo e objetivo (sem exageros de personalidade).
+- Mantenha o tom profissional, prestativo e objetivo.
 
 Você está aqui para ajudar o usuário a construir jogos e sistemas de qualidade, desde protótipos até produção."""
 
                 messages = [{"role": "system", "content": system_prompt}]
                 
-                for m in st.session_state.historico[-16:]:  # Memória das últimas 16 mensagens
+                for m in st.session_state.historico[-16:]:
                     if m.get("image"):
                         messages.append({"role": "user", "content": m["content"]})
                     else:
                         messages.append({"role": m["role"], "content": m["content"]})
 
                 response = client.chat.completions.create(
-                    model="llama-3.1-8b-instant",
+                    model="openai/gpt-oss-20b",          # ← modelo que ainda funciona
                     messages=messages,
                     temperature=0.4,
                     max_tokens=2500
